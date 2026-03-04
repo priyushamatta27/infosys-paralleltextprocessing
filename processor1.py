@@ -2,8 +2,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 # function to save a chunk
 def save_chunk(chunk, num):
+    print(f"Saving chunk {num}...")
+    
     with open(f"chunk_{num}.txt", "w") as f:
         f.writelines(chunk)
+
+    print(f"Chunk {num} saved")
 
 def chunk_file(file_name, chunk_size):
 
@@ -12,12 +16,12 @@ def chunk_file(file_name, chunk_size):
 
     chunks = [lines[i:i+chunk_size] for i in range(0, len(lines), chunk_size)]
 
+    print(f"Total chunks created: {len(chunks)}")
+
     with ThreadPoolExecutor() as executor:
         for i, chunk in enumerate(chunks, 1):
+            print(f"Submitting chunk {i} to thread pool")
             executor.submit(save_chunk, chunk, i)
 
 # run program
 chunk_file("product_reviews_50000.csv", 2000)
-    with ThreadPoolExecutor() as executor:
-        executor.map(process_text, sample_texts)
-
