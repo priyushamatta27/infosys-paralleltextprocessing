@@ -1,42 +1,39 @@
-import os
+from concurrent.futures import ThreadPoolExecutor
 
-def chunk_file(input_file, chunk_size=1000, output_folder="chunks"):
-    
-    # Create output folder if not exists
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    with open(input_file, "r", encoding="utf-8") as f:
-        chunk_number = 1
-        lines = []
-
-        for line_number, line in enumerate(f, start=1):
-            lines.append(line)
-
-            if line_number % chunk_size == 0:
-                output_file = os.path.join(output_folder, f"chunk_{chunk_number}.txt")
-                
-                with open(output_file, "w", encoding="utf-8") as out:
-                    out.writelines(lines)
-
-                print(f"Created {output_file}")
-                
-                lines = []
-                chunk_number += 1
-
-        # Save remaining lines
-        if lines:
-            output_file = os.path.join(output_folder, f"chunk_{chunk_number}.txt")
-            
-            with open(output_file, "w", encoding="utf-8") as out:
-                out.writelines(lines)
-
-            print(f"Created {output_file}")
+# Function that processes each chunk
+def process_chunk(chunk):
+    # Example processing: count words in the chunk
+    word_count = sum(len(line.split()) for line in chunk)
+    return word_count
 
 
-# Example usage
+def parallel_process(file_name, chunk_size=1000):
+
+    results = []
+
+    with open(file_name, "r", encoding="utf-8") as file:
+
+        chunk = []
+
+        with ThreadPoolExecutor() as executor:
+            futures = []
+
+            for line in file:
+                chunk.append(line)
+
+                if len(chunk) == chunk_size:
+                    futures.append(executor.submit(process_chunk, chunk))
+                    chunk = []
+
+            # process remaining lines
+            if chunk:
+                futures.append(executor.submit(process_chunk, chunk))
+
+            for future in futures:
+                results.append(future.result())
+
+    print("Total words:", sum(results))
+
+
 if __name__ == "__main__":
-    file_path = "product_reviews_50000.csv"   # input file
-    chunk_size = 2000                         # lines per chunk
-
-    chunk_file(file_path, chunk_size)
+    parallel_process("product_reviews_50000.csv", 2000)
