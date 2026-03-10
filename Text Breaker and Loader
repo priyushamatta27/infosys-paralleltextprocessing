@@ -3,57 +3,50 @@ import csv
 from concurrent.futures import ThreadPoolExecutor
 
 
-def split_into_sentences(text):
-    """
-    Split text into sentences using regex.
-    """
-    sentences = re.split(r'[.!?]', text)
-
-    cleaned_sentences = []
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if sentence:
-            cleaned_sentences.append(sentence)
-
-    return cleaned_sentences
+def split_into_words(text):
+    """Split text into words."""
+    return re.findall(r'\b\w+\b', text)
 
 
-def process_chunk(chunk):
-    """
-    Process a chunk of text lines.
-    """
-    result = []
-
-    for text in chunk:
-        sentences = split_into_sentences(text)
-        result.extend(sentences)
-
-    return result
-
-
-def chunk_data(data, chunk_size):
-    """
-    Divide dataset into chunks.
-    """
+def create_word_chunks(words, chunk_size=100):
+    """Create chunks of words."""
     chunks = []
-
-    for i in range(0, len(data), chunk_size):
-        chunks.append(data[i:i + chunk_size])
-
+    for i in range(0, len(words), chunk_size):
+        chunks.append(words[i:i + chunk_size])
     return chunks
 
 
+def words_to_sentences(word_chunk):
+    """Convert word chunk back to sentences."""
+    text = " ".join(word_chunk)
+    sentences = re.split(r'[.!?]', text)
+
+    cleaned = []
+    for s in sentences:
+        s = s.strip()
+        if s:
+            cleaned.append(s)
+
+    return cleaned
+
+
+def process_chunk(chunk):
+    """Process chunk in parallel."""
+    return words_to_sentences(chunk)
+
+
 def read_csv(file_path):
-    """
-    Read text from CSV file.
-    """
+    """Read review text column from CSV."""
     texts = []
 
     with open(file_path, 'r', encoding='utf-8') as file:
         reader = csv.reader(file)
 
+        next(reader)  # skip header
+
         for row in reader:
-            texts.append(row[0])
+            if len(row) > 1:
+                texts.append(row[1])  # read review text
 
     return texts
 
@@ -65,31 +58,35 @@ def main():
     print("Reading dataset...")
     texts = read_csv(file_path)
 
-    print("Creating chunks...")
-    chunks = chunk_data(texts, 1000)
+    print("Breaking text into words...")
+
+    all_words = []
+    for text in texts:
+        all_words.extend(split_into_words(text))
+
+    print("\nTotal Words:", len(all_words))
+    print("\nSample Words:")
+    print(all_words[:20])
+
+    print("\nCreating word chunks...")
+    chunks = create_word_chunks(all_words, 200)
 
     print("Starting parallel processing...")
+
+    final_sentences = []
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         results = executor.map(process_chunk, chunks)
 
-    final_sentences = []
+        for r in results:
+            final_sentences.extend(r)
 
-    for chunk_result in results:
-        final_sentences.extend(chunk_result)
+    print("\nSample Sentences:")
+    for s in final_sentences[:10]:
+        print(s)
 
-    print("Total sentences extracted:", len(final_sentences))
+    print("\nTotal sentences extracted:", len(final_sentences))
 
 
 if __name__ == "__main__":
     main()
-def split_into_chunks(lines, chunk_size=100):
-    chunks = []
-    for i in range(0, len(lines), chunk_size):
-        chunks.append(lines[i:i + chunk_size])
-    return chunks
-from concurrent.futures import ThreadPoolExecutor
-
-with ThreadPoolExecutor(max_workers=4) as executor:
-    results = executor.map(process_chunk, chunks)
-what is the code use for is it for Text Breaker and Loader
