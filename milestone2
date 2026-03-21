@@ -1,0 +1,36 @@
+import pandas as pd
+import re
+
+# Function to split review text into sentences
+def split_into_sentences(text):
+    if pd.isna(text):
+        return []
+    return [s.strip() for s in re.split(r'(?<=[.!?])\s+', str(text)) if s.strip()]
+
+# Load dataset
+df = pd.read_csv("product_reviews_50000.csv")
+
+# Store sentence-level output
+output = []
+
+# Process each review
+for _, row in df.iterrows():
+    sentences = split_into_sentences(row["review_text"])
+    
+    for i, sentence in enumerate(sentences, 1):
+        output.append({
+            "review_id": row["review_id"],
+            "product_name": row["product_name"],
+            "rating": row["rating"],
+            "sentence_no": i,
+            "sentence_text": sentence
+        })
+
+# Convert output to DataFrame
+result_df = pd.DataFrame(output)
+
+# Save to CSV
+result_df.to_csv("sentence_output.csv", index=False)
+
+print("Done! Output saved as sentence_output.csv")
+print(result_df.head())
