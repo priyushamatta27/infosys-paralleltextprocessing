@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TextLens — Sentiment Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #7c6dfa;
+    --accent2: #fa6d8a;
+    --accent3: #6dfabc;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --pos: #4ade80;
+    --neg: #f87171;
+    --neu: #94a3b8;
+    --mix: #fbbf24;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    padding: 2.5rem 3rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .logo-block h1 {
+    font-family: var(--font-head);
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+
+  .logo-block p {
+    color: var(--muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-top: 0.35rem;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 1rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .stat-pill span.val {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 100px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+
+  /* ── DROP ZONE ── */
+  .drop-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 1.8rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: var(--surface);
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(124,109,250,0.06);
+  }
+
+  .drop-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-zone .dz-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .drop-zone p {
+    font-size: 0.75rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .drop-zone .dz-hint {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+    opacity: 0.6;
+  }
+
+  /* ── DIVIDER ── */
+  .or-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+  }
+  .or-divider::before, .or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── TEXTAREA ── */
+  textarea {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.6;
+    padding: 0.9rem 1rem;
+    resize: vertical;
+    width: 100%;
+    min-height: 140px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea::placeholder {
+    color: var(--muted);
+    opacity: 0.5;
+  }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    position: relative;
+  }
+
+  .search-wrap input {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    padding: 0.65rem 2.5rem 0.65rem 1rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--accent); }
+
+  .search-wrap .search-icon {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 0.8rem;
+    pointer-events: none;
+  }
+
+  .match-count {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 0.3rem;
+    min-height: 1em;
+  }
+
+  /* ── FILTER PILLS ── */
+  .filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .filter-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { border-color: var(--accent); background: rgba(124,109,250,0.15); color: var(--text); }
+  .filter-btn.pos.active { border-color: var(--pos); background: rgba(74,222,128,0.1); color: var(--pos); }
+  .filter-btn.neg.active { border-color: var(--neg); background: rgba(248,113,113,0.1); color: var(--neg); }
+  .filter-btn.neu.active { border-color: var(--neu); background: rgba(148,163,184,0.1); color: var(--neu); }
+  .filter-btn.mix.active { border-color: var(--mix); background: rgba(251,191,36,0.1); color: var(--mix); }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #5b4fe8);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: opacity 0.2s, transform 0.1s;
+    width: 100%;
+    letter-spacing: 0.05em;
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-row {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .btn-export {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 0.6rem 0.8rem;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+
+  .btn-export:hover { border-color: var(--accent3); color: var(--accent3); }
+  .btn-export:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── MINI CHART ── */
+  .mini-chart {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    height: 40px;
+    padding: 0.5rem 0 0;
+  }
+
+  .mini-bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+    transition: height 0.4s ease;
+  }
+
+  .sentiment-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .sent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.7rem 0.8rem;
+    text-align: center;
+  }
+
+  .sent-card .label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .sent-card .count { font-family: var(--font-head); font-size: 1.5rem; font-weight: 700; line-height: 1; margin-top: 0.2rem; }
+  .sent-card.pos .count { color: var(--pos); }
+  .sent-card.neg .count { color: var(--neg); }
+  .sent-card.neu .count { color: var(--neu); }
+  .sent-card.mix .count { color: var(--mix); }
+
+  /* ── CONTENT PANEL ── */
+  .content-panel {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 100px);
+  }
+
+  /* ── STATE SCREENS ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    min-height: 60vh;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .empty-state .big-icon { font-size: 4rem; opacity: 0.3; }
+  .empty-state h2 { font-family: var(--font-head); font-size: 1.3rem; color: var(--text); opacity: 0.4; }
+  .empty-state p { font-size: 0.72rem; max-width: 300px; line-height: 1.6; opacity: 0.5; }
+
+  /* ── LOADING ── */
+  .loading-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    min-height: 60vh;
+    text-align: center;
+  }
+
+  .loading-state.active { display: flex; }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-state p { color: var(--muted); font-size: 0.75rem; }
+
+  /* ── RESULTS TABLE ── */
+  .results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .results-header h2 {
+    font-family: var(--font-head);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .results-header .meta {
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.73rem;
+  }
+
+  thead th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 0.63rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+  }
+
+  thead th:hover { color: var(--text); }
+
+  thead th .sort-icon {
+    opacity: 0.3;
+    margin-left: 0.3rem;
+    font-style: normal;
+  }
+
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    animation: rowIn 0.3s ease both;
+  }
+
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+
+  tbody td {
+    padding: 0.65rem 1rem;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .row-num {
+    color: var(--muted);
+    font-size: 0.62rem;
+    width: 50px;
+  }
+
+  .text-cell {
+    max-width: 420px;
+  }
+
+  .text-cell .text-snippet {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .highlight {
+    background: rgba(251,191,36,0.3);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .sentiment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.2rem 0.6rem;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .sentiment-badge.positive { background: rgba(74,222,128,0.12); color: var(--pos); border: 1px solid rgba(74,222,128,0.25); }
+  .sentiment-badge.negative { background: rgba(248,113,113,0.12); color: var(--neg); border: 1px solid rgba(248,113,113,0.25); }
+  .sentiment-badge.neutral  { background: rgba(148,163,184,0.1);  color: var(--neu); border: 1px solid rgba(148,163,184,0.2); }
+  .sentiment-badge.mixed    { background: rgba(251,191,36,0.1);   color: var(--mix); border: 1px solid rgba(251,191,36,0.2); }
+
+  .score-bar-wrap {
+    width: 80px;
+  }
+
+  .score-bar-track {
+    background: var(--border);
+    border-radius: 999px;
+    height: 5px;
+    overflow: hidden;
+  }
+
+  .score-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.4s ease;
+  }
+
+  .score-val {
+    font-size: 0.62rem;
+    color: var(--muted);
+    margin-top: 0.2rem;
+  }
+
+  .word-count-badge {
+    background: var(--surface2);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+  }
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    padding-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .page-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.3rem 0.65rem;
+    transition: all 0.15s;
+  }
+
+  .page-btn:hover { border-color: var(--accent); color: var(--text); }
+  .page-btn.active { border-color: var(--accent); background: rgba(124,109,250,0.15); color: var(--text); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap {
+    background: var(--border);
+    border-radius: 999px;
+    height: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 999px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.7rem 1.1rem;
+    font-size: 0.75rem;
+    color: var(--text);
+    z-index: 999;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; }
+    .content-panel { max-height: none; }
+  }
+
+  .file-badge {
+    background: rgba(124,109,250,0.12);
+    border: 1px solid rgba(124,109,250,0.3);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 0.68rem;
+    padding: 0.4rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .file-badge button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    transition: color 0.15s;
+  }
+
+  .file-badge button:hover { color: var(--neg); }
+
+  .chunk-size-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .chunk-size-wrap label {
+    color: var(--muted);
+    font-size: 0.68rem;
+    white-space: nowrap;
+  }
+
+  .chunk-size-wrap input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+
+  .chunk-size-wrap span {
+    color: var(--text);
+    font-size: 0.68rem;
+    min-width: 45px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <h1>TextLens</h1>
+    <p>Sentiment Analyzer &amp; Text Explorer</p>
+  </div>
+  <div class="header-stats">
+    <div class="stat-pill">Lines <span class="val" id="hdr-lines">—</span></div>
+    <div class="stat-pill">Words <span class="val" id="hdr-words">—</span></div>
+    <div class="stat-pill">Analyzed <span class="val" id="hdr-analyzed">—</span></div>
+  </div>
+</header>
+
+<main>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <!-- INPUT -->
+    <div>
+      <div class="section-label">Input Source</div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".txt,.csv,.md,.log" />
+        <span class="dz-icon">📄</span>
+        <p>Drop a file here<br/>or click to browse</p>
+        <div class="dz-hint">.txt · .csv · .md · .log</div>
+      </div>
+      <div id="fileBadge" style="display:none; margin-top:0.5rem;"></div>
+    </div>
+
+    <div class="or-divider">OR</div>
+
+    <div>
+      <div class="section-label">Paste Text</div>
+      <textarea id="textInput" placeholder="Paste your review text here, one entry per line…"></textarea>
+    </div>
+
+    <!-- CHUNK SIZE -->
+    <div>
+      <div class="section-label">Chunk Size (lines per batch)</div>
+      <div class="chunk-size-wrap">
+        <label>100</label>
+        <input type="range" id="chunkSlider" min="10" max="500" step="10" value="50" />
+        <label>500</label>
+        <span id="chunkVal">50</span>
+      </div>
+    </div>
+
+    <!-- ANALYZE -->
+    <button class="btn-primary" id="analyzeBtn" disabled>⚡ Analyze Sentiment</button>
+    <div class="progress-wrap"><div class="progress-fill" id="progressBar"></div></div>
+
+    <!-- SEARCH -->
+    <div>
+      <div class="section-label">Keyword Search</div>
+      <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="Search in text…" />
+        <span class="search-icon">⌕</span>
+      </div>
+      <div class="match-count" id="matchCount"></div>
+    </div>
+
+    <!-- FILTER -->
+    <div>
+      <div class="section-label">Filter by Sentiment</div>
+      <div class="filter-group">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn pos" data-filter="positive">🟢 Positive</button>
+        <button class="filter-btn neg" data-filter="negative">🔴 Negative</button>
+        <button class="filter-btn neu" data-filter="neutral">⚪ Neutral</button>
+        <button class="filter-btn mix" data-filter="mixed">🟡 Mixed</button>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="summaryBlock" style="display:none">
+      <div class="section-label">Summary</div>
+      <div class="sentiment-summary">
+        <div class="sent-card pos"><div class="label">Positive</div><div class="count" id="cnt-pos">0</div></div>
+        <div class="sent-card neg"><div class="label">Negative</div><div class="count" id="cnt-neg">0</div></div>
+        <div class="sent-card neu"><div class="label">Neutral</div><div class="count" id="cnt-neu">0</div></div>
+        <div class="sent-card mix"><div class="label">Mixed</div><div class="count" id="cnt-mix">0</div></div>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div>
+      <div class="section-label">Export Results</div>
+      <div class="btn-row">
+        <button class="btn-export" id="exportCsv" disabled>📥 CSV</button>
+        <button class="btn-export" id="exportXlsx" disabled>📊 Excel</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <section class="content-panel" id="contentPanel">
+
+    <div class="empty-state" id="emptyState">
+      <div class="big-icon">🔬</div>
+      <h2>Nothing to analyze yet</h2>
+      <p>Upload a text file or paste your text on the left, then hit Analyze Sentiment.</p>
+    </div>
+
+    <div class="loading-state" id="loadingState">
+      <div class="spinner"></div>
+      <p id="loadingMsg">Analyzing sentiments…</p>
+    </div>
+
+    <div id="resultsWrap" style="display:none">
+      <div class="results-header">
+        <h2>Results</h2>
+        <span class="meta" id="resultsMeta"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="row-num">#</th>
+              <th data-col="text">Text <i class="sort-icon">↕</i></th>
+              <th data-col="words">Words <i class="sort-icon">↕</i></th>
+              <th data-col="sentiment" style="width:110px">Sentiment <i class="sort-icon">↕</i></th>
+              <th data-col="score" style="width:120px">Score <i class="sort-icon">↕</i></th>
+              <th data-col="reasoning" style="min-width:180px">Reasoning <i class="sort-icon">↕</i></th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+const state = {
+  rawLines: [],
+  results: [],
+  filtered: [],
+  currentPage: 1,
+  pageSize: 25,
+  searchKw: '',
+  sentimentFilter: 'all',
+  sortCol: null,
+  sortDir: 1
+};
+
+// ── DOM REFS ──
+const $  = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+const fileInput   = $('fileInput');
+const dropZone    = $('dropZone');
+const textInput   = $('textInput');
+const analyzeBtn  = $('analyzeBtn');
+const searchInput = $('searchInput');
+const progressBar = $('progressBar');
+const resultsBody = $('resultsBody');
+
+// ── FILE HANDLING ──
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    textInput.value = e.target.result;
+    updateInputState();
+    const badge = $('fileBadge');
+    badge.style.display = 'block';
+    badge.innerHTML = `<div class="file-badge">📄 ${file.name} <button onclick="clearFile()">✕</button></div>`;
+    showToast(`Loaded: ${file.name}`);
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function clearFile() {
+  $('fileBadge').style.display = 'none';
+  fileInput.value = '';
+}
+
+textInput.addEventListener('input', updateInputState);
+
+function updateInputState() {
+  const lines = getLines();
+  analyzeBtn.disabled = lines.length === 0;
+  $('hdr-lines').textContent = lines.length > 0 ? lines.length.toLocaleString() : '—';
+  const words = lines.reduce((s, l) => s + l.split(/\s+/).filter(Boolean).length, 0);
+  $('hdr-words').textContent = words > 0 ? words.toLocaleString() : '—';
+}
+
+function getLines() {
+  return textInput.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+}
+
+// ── CHUNK SLIDER ──
+$('chunkSlider').addEventListener('input', function() {
+  $('chunkVal').textContent = this.value;
+});
+
+// ── ANALYZE ──
+analyzeBtn.addEventListener('click', analyzeAll);
+
+async function analyzeAll() {
+  const lines = getLines();
+  if (!lines.length) return;
+
+  state.rawLines = lines;
+  state.results = [];
+  state.currentPage = 1;
+
+  // Show loading
+  $('emptyState').style.display = 'none';
+  $('resultsWrap').style.display = 'none';
+  $('loadingState').classList.add('active');
+  analyzeBtn.disabled = true;
+  progressBar.style.width = '0%';
+
+  const chunkSize = parseInt($('chunkSlider').value);
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += chunkSize) chunks.push(lines.slice(i, i + chunkSize));
+
+  let done = 0;
+  for (const chunk of chunks) {
+    try {
+      const chunkResults = await analyzeChunk(chunk);
+      state.results.push(...chunkResults);
+      done += chunk.length;
+      const pct = Math.round((done / lines.length) * 100);
+      progressBar.style.width = pct + '%';
+      $('loadingMsg').textContent = `Analyzing… ${done} / ${lines.length} lines (${pct}%)`;
+      $('hdr-analyzed').textContent = state.results.length.toLocaleString();
+    } catch (err) {
+      console.error('Chunk error:', err);
+      // Add error placeholders
+      chunk.forEach(line => state.results.push({
+        text: line,
+        sentiment: 'neutral',
+        score: 0.5,
+        reasoning: 'Analysis unavailable'
+      }));
+    }
+  }
+
+  $('loadingState').classList.remove('active');
+  analyzeBtn.disabled = false;
+  progressBar.style.width = '100%';
+  setTimeout(() => progressBar.style.width = '0%', 1000);
+
+  updateSummary();
+  applyFilters();
+  renderTable();
+  $('resultsWrap').style.display = 'block';
+  $('exportCsv').disabled = false;
+  $('exportXlsx').disabled = false;
+  $('summaryBlock').style.display = 'block';
+  showToast(`✅ Analyzed ${state.results.length} lines`);
+}
+
+async function analyzeChunk(lines) {
+  const prompt = `Analyze the sentiment of each line below. Return ONLY a JSON array with exactly ${lines.length} objects, one per line in the same order.
+Each object must have:
+- "sentiment": one of "positive", "negative", "neutral", "mixed"
+- "score": a float 0.0 to 1.0 (confidence/intensity of the sentiment, where 1.0 = strongest)
+- "reasoning": a short 5-10 word reason
+
+Lines:
+${lines.map((l, i) => `${i + 1}. ${l}`).join('\n')}
+
+Return ONLY the JSON array, no markdown, no explanation.`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  const text = (data.content || []).map(b => b.text || '').join('');
+  const clean = text.replace(/```json|```/g, '').trim();
+
+  let parsed;
+  try { parsed = JSON.parse(clean); } catch { parsed = []; }
+
+  return lines.map((line, i) => ({
+    text: line,
+    words: line.split(/\s+/).filter(Boolean).length,
+    sentiment: (parsed[i] && parsed[i].sentiment) ? parsed[i].sentiment.toLowerCase() : 'neutral',
+    score: (parsed[i] && typeof parsed[i].score === 'number') ? parsed[i].score : 0.5,
+    reasoning: (parsed[i] && parsed[i].reasoning) ? parsed[i].reasoning : '—'
+  }));
+}
+
+// ── SUMMARY ──
+function updateSummary() {
+  const counts = { positive: 0, negative: 0, neutral: 0, mixed: 0 };
+  state.results.forEach(r => { if (counts[r.sentiment] !== undefined) counts[r.sentiment]++; });
+  $('cnt-pos').textContent = counts.positive;
+  $('cnt-neg').textContent = counts.negative;
+  $('cnt-neu').textContent = counts.neutral;
+  $('cnt-mix').textContent = counts.mixed;
+}
+
+// ── SEARCH ──
+searchInput.addEventListener('input', function() {
+  state.searchKw = this.value.trim().toLowerCase();
+  state.currentPage = 1;
+  applyFilters();
+  renderTable();
+});
+
+// ── FILTER ──
+$$('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    $$('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    state.sentimentFilter = this.dataset.filter;
+    state.currentPage = 1;
+    applyFilters();
+    renderTable();
+  });
+});
+
+function applyFilters() {
+  let data = [...state.results];
+
+  if (state.sentimentFilter !== 'all') {
+    data = data.filter(r => r.sentiment === state.sentimentFilter);
+  }
+
+  if (state.searchKw) {
+    data = data.filter(r => r.text.toLowerCase().includes(state.searchKw) || r.reasoning.toLowerCase().includes(state.searchKw));
+    $('matchCount').textContent = `${data.length} match${data.length !== 1 ? 'es' : ''}`;
+  } else {
+    $('matchCount').textContent = '';
+  }
+
+  if (state.sortCol) {
+    data.sort((a, b) => {
+      let va = a[state.sortCol], vb = b[state.sortCol];
+      if (typeof va === 'string') va = va.toLowerCase(), vb = vb.toLowerCase();
+      return va < vb ? -state.sortDir : va > vb ? state.sortDir : 0;
+    });
+  }
+
+  state.filtered = data;
+  $('resultsMeta').textContent = `${data.length} of ${state.results.length} entries`;
+}
+
+// ── SORT ──
+$$('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', function() {
+    const col = this.dataset.col;
+    if (state.sortCol === col) { state.sortDir *= -1; }
+    else { state.sortCol = col; state.sortDir = 1; }
+    $$('thead th').forEach(t => t.classList.remove('sorted'));
+    this.classList.add('sorted');
+    this.querySelector('.sort-icon').textContent = state.sortDir === 1 ? '↑' : '↓';
+    applyFilters();
+    renderTable();
+  });
+});
+
+// ── RENDER TABLE ──
+function renderTable() {
+  const start = (state.currentPage - 1) * state.pageSize;
+  const page  = state.filtered.slice(start, start + state.pageSize);
+  const kw    = state.searchKw;
+
+  resultsBody.innerHTML = page.map((row, i) => {
+    const globalIdx = start + i + 1;
+    const displayText = kw ? highlight(escHtml(row.text), kw) : escHtml(row.text);
+    const scoreColor = row.sentiment === 'positive' ? 'var(--pos)' : row.sentiment === 'negative' ? 'var(--neg)' : row.sentiment === 'mixed' ? 'var(--mix)' : 'var(--neu)';
+    const scoreW = Math.round(row.score * 100);
+
+    return `<tr style="animation-delay:${(i * 20)}ms">
+      <td class="row-num">${globalIdx}</td>
+      <td class="text-cell"><div class="text-snippet">${displayText}</div></td>
+      <td><span class="word-count-badge">${row.words}</span></td>
+      <td><span class="sentiment-badge ${row.sentiment}">${sentEmoji(row.sentiment)} ${row.sentiment}</span></td>
+      <td class="score-bar-wrap">
+        <div class="score-bar-track"><div class="score-bar-fill" style="width:${scoreW}%;background:${scoreColor}"></div></div>
+        <div class="score-val">${row.score.toFixed(2)}</div>
+      </td>
+      <td style="color:var(--muted);font-size:0.68rem">${escHtml(row.reasoning)}</td>
+    </tr>`;
+  }).join('');
+
+  renderPagination();
+}
+
+function sentEmoji(s) {
+  return { positive: '🟢', negative: '🔴', neutral: '⚪', mixed: '🟡' }[s] || '⚪';
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function highlight(text, kw) {
+  const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  return text.replace(re, m => `<mark class="highlight">${m}</mark>`);
+}
+
+// ── PAGINATION ──
+function renderPagination() {
+  const total = Math.ceil(state.filtered.length / state.pageSize);
+  if (total <= 1) { $('pagination').innerHTML = ''; return; }
+
+  let html = '';
+  const cur = state.currentPage;
+  const maxShow = 7;
+
+  html += `<button class="page-btn" onclick="goPage(${cur-1})" ${cur===1?'disabled':''}>‹</button>`;
+
+  let pages = [];
+  if (total <= maxShow) {
+    pages = Array.from({length: total}, (_,i) => i+1);
+  } else {
+    pages = [1];
+    if (cur > 3) pages.push('…');
+    for (let p = Math.max(2, cur-1); p <= Math.min(total-1, cur+1); p++) pages.push(p);
+    if (cur < total-2) pages.push('…');
+    pages.push(total);
+  }
+
+  pages.forEach(p => {
+    if (p === '…') html += `<span class="page-btn" style="cursor:default;opacity:0.4">…</span>`;
+    else html += `<button class="page-btn ${p===cur?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  });
+
+  html += `<button class="page-btn" onclick="goPage(${cur+1})" ${cur===total?'disabled':''}>›</button>`;
+  $('pagination').innerHTML = html;
+}
+
+function goPage(n) {
+  const total = Math.ceil(state.filtered.length / state.pageSize);
+  if (n < 1 || n > total) return;
+  state.currentPage = n;
+  renderTable();
+  $('contentPanel').scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── EXPORT CSV ──
+$('exportCsv').addEventListener('click', () => {
+  const data = state.filtered.length ? state.filtered : state.results;
+  const header = ['#','Text','Words','Sentiment','Score','Reasoning'];
+  const rows = data.map((r, i) => [
+    i + 1,
+    `"${r.text.replace(/"/g, '""')}"`,
+    r.words,
+    r.sentiment,
+    r.score.toFixed(3),
+    `"${r.reasoning.replace(/"/g, '""')}"`
+  ]);
+  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+  download('textlens_results.csv', 'text/csv', csv);
+  showToast('📥 CSV exported!');
+});
+
+// ── EXPORT EXCEL ──
+$('exportXlsx').addEventListener('click', () => {
+  const data = state.filtered.length ? state.filtered : state.results;
+  const header = ['#', 'Text', 'Words', 'Sentiment', 'Score', 'Reasoning'];
+  const rows = data.map((r, i) => [i + 1, r.text, r.words, r.sentiment, r.score.toFixed(3), r.reasoning]);
+
+  // Build XLSX manually (simple XML-based format)
+  const xmlRows = [header, ...rows].map(row =>
+    `<row>${row.map(cell => `<c t="inlineStr"><is><t>${String(cell).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</t></is></c>`).join('')}</row>`
+  ).join('');
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+</workbook>`;
+
+  // Use CSV-compatible tab-separated for universal spreadsheet opening
+  const tsv = [header.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+  download('textlens_results.xls', 'application/vnd.ms-excel', tsv);
+  showToast('📊 Excel file exported!');
+});
+
+function download(filename, type, content) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
