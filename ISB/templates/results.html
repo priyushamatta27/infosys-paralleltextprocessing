@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexon Analytics — Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">⬡</div>
+        <div>
+          <div class="logo-text">Lexon</div>
+          <div class="logo-sub">Analytics Engine</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Navigation</div>
+
+      <a class="nav-item" href="/">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+        </svg>
+        Upload &amp; Process
+      </a>
+
+      <a class="nav-item active" href="/results">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        Results
+      </a>
+
+      <a class="nav-item" href="/search">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        Search
+      </a>
+    </nav>
+
+    <!-- Timing Stats -->
+    <div style="padding: 0 12px 24px">
+      <div class="timing-panel">
+        <div class="timing-title">Processing Times</div>
+        <div class="timing-row">
+          <div class="timing-label">
+            <div class="timing-dot seq"></div>Sequential
+          </div>
+          <div class="timing-val" id="stat-seq-time">—</div>
+        </div>
+        <div class="timing-row">
+          <div class="timing-label">
+            <div class="timing-dot par"></div>Parallel
+          </div>
+          <div class="timing-val" id="stat-par-time">—</div>
+        </div>
+        <div class="timing-speedup" id="stat-speedup">Run a job to see stats</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══════════════════════════════════════════════════ -->
+  <main class="main-content" id="results-container">
+
+    <div class="page-header">
+      <div>
+        <div class="page-breadcrumb">LEXON / RESULTS</div>
+        <h1 class="page-title">Analysis Results</h1>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-outline" id="btn-search-page">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          Search
+        </button>
+        <button class="btn btn-ghost" id="btn-export-csv">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          CSV
+        </button>
+        <button class="btn btn-ghost" id="btn-export-xlsx">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Excel
+        </button>
+        <button class="btn btn-outline" id="btn-email">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+          </svg>
+          Email
+        </button>
+      </div>
+    </div>
+
+    <div class="content-area">
+
+      <!-- KPI Stats Grid -->
+      <div class="stats-grid stagger mb-6">
+        <div class="stat-card slide-up" style="--accent-color:var(--accent-cyan)">
+          <div class="stat-label">Total Lines</div>
+          <div class="stat-value text-cyan" id="stat-total-lines">0</div>
+          <div class="stat-sub">chunks processed</div>
+        </div>
+        <div class="stat-card slide-up" style="--accent-color:var(--accent-green)">
+          <div class="stat-label">Avg Sentiment Score</div>
+          <div class="stat-value text-green" id="stat-avg-score">0.000</div>
+          <div class="stat-sub">normalised [-1, +1]</div>
+        </div>
+        <div class="stat-card slide-up" style="--accent-color:var(--accent-green)">
+          <div class="stat-label">Positive</div>
+          <div class="stat-value text-green" id="stat-pos-count">0</div>
+          <div class="stat-sub">lines</div>
+        </div>
+        <div class="stat-card slide-up" style="--accent-color:var(--accent-red)">
+          <div class="stat-label">Negative</div>
+          <div class="stat-value text-red" id="stat-neg-count">0</div>
+          <div class="stat-sub">lines</div>
+        </div>
+        <div class="stat-card slide-up" style="--accent-color:var(--text-3)">
+          <div class="stat-label">Neutral</div>
+          <div class="stat-value" style="color:var(--text-2)" id="stat-neu-count">0</div>
+          <div class="stat-sub">lines</div>
+        </div>
+        <div class="stat-card slide-up" style="--accent-color:var(--accent-purple)">
+          <div class="stat-label">Total Words</div>
+          <div class="stat-value" style="color:var(--accent-purple)" id="stat-total-words">0</div>
+          <div class="stat-sub">across all chunks</div>
+        </div>
+      </div>
+
+      <!-- Sentiment Distribution Bar -->
+      <div class="card mb-6 fade-in">
+        <div class="card-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 20V10M12 20V4M6 20v-6"/>
+          </svg>
+          Positive / Negative / Neutral Distribution
+        </div>
+        <div class="segment-bar" id="segment-bar">
+          <div class="segment-fill pos" style="flex:1">—</div>
+        </div>
+        <div style="display:flex;gap:20px;margin-top:10px">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent-green)"></div>Positive</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent-red)"></div>Negative</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--text-3)"></div>Neutral</div>
+        </div>
+      </div>
+
+      <!-- Charts Row 1 -->
+      <div class="charts-grid mb-6">
+
+        <!-- Doughnut -->
+        <div class="chart-card fade-in">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Sentiment Distribution</div>
+              <div class="chart-sub">Proportion of each label</div>
+            </div>
+          </div>
+          <div style="max-width:280px;margin:0 auto">
+            <canvas id="chart-doughnut" height="220"></canvas>
+          </div>
+        </div>
+
+        <!-- Histogram -->
+        <div class="chart-card fade-in">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Score Distribution</div>
+              <div class="chart-sub">Chunks per score bucket</div>
+            </div>
+          </div>
+          <canvas id="chart-bar" height="220"></canvas>
+        </div>
+
+      </div>
+
+      <!-- Charts Row 2 -->
+      <div class="charts-grid mb-6">
+
+        <!-- Line trend -->
+        <div class="chart-card fade-in">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Sentiment Trend</div>
+              <div class="chart-sub">Score across chunks</div>
+            </div>
+          </div>
+          <canvas id="chart-line" height="200"></canvas>
+        </div>
+
+        <!-- Radar -->
+        <div class="chart-card fade-in">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Domain Coverage</div>
+              <div class="chart-sub">Keyword domain frequency</div>
+            </div>
+          </div>
+          <canvas id="chart-radar" height="200"></canvas>
+        </div>
+
+      </div>
+
+      <!-- Pattern Frequency + Word Cloud -->
+      <div class="two-col mb-6">
+
+        <div class="chart-card fade-in">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            Pattern Frequency
+          </div>
+          <div id="pattern-bars">
+            <div style="color:var(--text-3);font-size:13px">Loading…</div>
+          </div>
+        </div>
+
+        <div class="chart-card fade-in">
+          <div class="card-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            Key Words
+          </div>
+          <div class="word-cloud" id="word-cloud">
+            <span style="color:var(--text-3);font-size:13px">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Data Table -->
+      <div class="card fade-in">
+        <div class="card-title" style="margin-bottom:16px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 0-2-2V9m0 0h18"/>
+          </svg>
+          All Chunks
+        </div>
+
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Text Preview</th>
+                <th>Score</th>
+                <th>Label</th>
+                <th>Words</th>
+                <th>Tags</th>
+              </tr>
+            </thead>
+            <tbody id="results-tbody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state" style="padding:40px;text-align:center">
+                    <div class="empty-icon">📊</div>
+                    <div class="empty-title">Loading results…</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="results-pagination" class="pagination"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Email Modal -->
+<div class="modal-overlay hidden" id="email-modal">
+  <div class="modal-box">
+    <button class="modal-close" id="btn-close-modal">✕</button>
+    <div class="modal-title">Email Results</div>
+    <div class="modal-sub">Send this analysis to an email address</div>
+
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="email-input" placeholder="you@example.com">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="btn-send-email">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg>
+      Send Results
+    </button>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lexon Analytics — Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">⬡</div>
+        <div>
+          <div class="logo-text">Lexon</div>
+          <div class="logo-sub">Analytics Engine</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Navigation</div>
+
+      <a class="nav-item active" href="/">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+        </svg>
+        Upload & Process
+      </a>
+
+      <a class="nav-item" href="/results">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        Results
+      </a>
+
+      <a class="nav-item" href="/search">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        Search
+      </a>
+    </nav>
+
+    <!-- Timing Stats -->
+    <div style="padding: 0 12px 24px">
+      <div class="timing-panel">
+        <div class="timing-title">Processing Times</div>
+        <div class="timing-row">
+          <div class="timing-label">
+            <div class="timing-dot seq"></div>Sequential
+          </div>
+          <div class="timing-val" id="stat-seq-time">—</div>
+        </div>
+        <div class="timing-row">
+          <div class="timing-label">
+            <div class="timing-dot par"></div>Parallel
+          </div>
+          <div class="timing-val" id="stat-par-time">—</div>
+        </div>
+        <div class="timing-speedup" id="stat-speedup">Run a job to see stats</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══════════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <div class="page-header">
+      <div>
+        <div class="page-breadcrumb">LEXON / UPLOAD</div>
+        <h1 class="page-title">Upload &amp; Process</h1>
+      </div>
+      <div class="page-actions">
+        <span class="mono" style="font-size:11px;color:var(--text-3)" id="current-time"></span>
+      </div>
+    </div>
+
+    <div class="content-area">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+        <!-- LEFT COLUMN: File + Raw text -->
+        <div>
+          <!-- Drop zone -->
+          <div class="card mb-6">
+            <div class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+              </svg>
+              File Upload
+            </div>
+
+            <div class="drop-zone" id="drop-zone">
+              <div class="drop-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+              </div>
+              <div class="drop-title">Drop your file here</div>
+              <div class="drop-sub">or click to browse — any size supported</div>
+              <div class="drop-types">
+                <span class="type-badge">.txt</span><span class="type-badge">.csv</span>
+                <span class="type-badge">.json</span><span class="type-badge">.pdf</span>
+                <span class="type-badge">.docx</span><span class="type-badge">.xlsx</span>
+                <span class="type-badge">.xml</span><span class="type-badge">.html</span>
+                <span class="type-badge">.log</span><span class="type-badge">.md</span>
+              </div>
+              <input type="file" id="file-input" style="display:none" accept="*">
+            </div>
+          </div>
+
+          <!-- OR divider -->
+          <div style="display:flex;align-items:center;gap:12px;margin:0 0 18px">
+            <div class="divider" style="margin:0;flex:1"></div>
+            <span class="mono" style="font-size:11px;color:var(--text-3)">OR PASTE TEXT</span>
+            <div class="divider" style="margin:0;flex:1"></div>
+          </div>
+
+          <!-- Raw text -->
+          <div class="card">
+            <div class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              Raw Text Input
+            </div>
+            <p style="font-size:12px;color:var(--text-3);margin-bottom:12px">
+              Paste text directly. Uploading a file disables this field.
+            </p>
+            <div class="form-group" style="margin:0">
+              <textarea class="form-input" id="raw-text" rows="7" placeholder="Paste your text here...&#10;&#10;Each line will be analysed independently..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Settings + Controls -->
+        <div>
+          <div class="card mb-6">
+            <div class="card-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M20 12h2M2 12h2M17.66 17.66l-1.41-1.41M6.34 17.66l1.41-1.41"/>
+              </svg>
+              Processing Configuration
+            </div>
+
+            <!-- Workers -->
+            <div class="form-group">
+              <label class="form-label">
+                Parallel Workers
+                <span class="mono" style="color:var(--accent-cyan);margin-left:6px" id="workers-display">4</span>
+              </label>
+              <input type="range" class="form-range" id="workers-range" min="1" max="32" value="4">
+              <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <span style="font-size:11px;color:var(--text-3)">1 (sequential)</span>
+                <span style="font-size:11px;color:var(--text-3)">32 (max parallel)</span>
+              </div>
+            </div>
+
+            <!-- Chunk size info -->
+            <div class="form-group">
+              <label class="form-label">Chunk Size Strategy</label>
+              <div class="card" style="padding:14px;background:var(--bg-2)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div style="padding:8px 10px;background:var(--bg-3);border-radius:8px;border:1px solid var(--glass-border)">
+                    <div class="mono" style="font-size:10px;color:var(--text-3)">TINY FILE</div>
+                    <div class="mono" style="font-size:12px;color:var(--text-1);margin-top:2px">10 lines/chunk</div>
+                  </div>
+                  <div style="padding:8px 10px;background:var(--bg-3);border-radius:8px;border:1px solid var(--glass-border)">
+                    <div class="mono" style="font-size:10px;color:var(--text-3)">SMALL FILE</div>
+                    <div class="mono" style="font-size:12px;color:var(--text-1);margin-top:2px">50 lines/chunk</div>
+                  </div>
+                  <div style="padding:8px 10px;background:var(--bg-3);border-radius:8px;border:1px solid var(--glass-border)">
+                    <div class="mono" style="font-size:10px;color:var(--text-3)">MEDIUM FILE</div>
+                    <div class="mono" style="font-size:12px;color:var(--text-1);margin-top:2px">200 lines/chunk</div>
+                  </div>
+                  <div style="padding:8px 10px;background:var(--bg-3);border-radius:8px;border:1px solid var(--glass-border)">
+                    <div class="mono" style="font-size:10px;color:var(--text-3)">LARGE FILE</div>
+                    <div class="mono" style="font-size:12px;color:var(--text-1);margin-top:2px">500+ lines/chunk</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;font-size:11px;color:var(--text-3)">
+                  ⚡ Chunk size auto-scales with file size for optimal performance
+                </div>
+              </div>
+            </div>
+
+            <!-- Multiprocessing toggle -->
+            <div class="form-group">
+              <label class="form-label">Execution Mode</label>
+              <div style="display:flex;gap:10px">
+                <div class="card" id="mode-thread" style="padding:12px 16px;flex:1;cursor:pointer;border-color:var(--accent-cyan);background:rgba(0,229,255,0.05)" onclick="selectMode('thread')">
+                  <div style="font-size:12px;font-weight:600;margin-bottom:2px">🧵 Threads</div>
+                  <div style="font-size:11px;color:var(--text-3)">I/O-bound, default</div>
+                </div>
+                <div class="card" id="mode-process" style="padding:12px 16px;flex:1;cursor:pointer" onclick="selectMode('process')">
+                  <div style="font-size:12px;font-weight:600;margin-bottom:2px">⚙️ Processes</div>
+                  <div style="font-size:11px;color:var(--text-3)">CPU-bound, heavy</div>
+                </div>
+              </div>
+              <input type="hidden" id="toggle-mp" value="false">
+            </div>
+          </div>
+
+          <!-- Start button + progress -->
+          <div class="card">
+            <button class="btn btn-primary btn-lg" id="btn-start" style="width:100%;justify-content:center;gap:12px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start Processing
+            </button>
+
+            <!-- Progress UI (hidden until processing starts) -->
+            <div id="progress-section" class="hidden" style="margin-top:20px">
+              <div class="progress-header">
+                <div class="progress-status">
+                  <div class="pulse-dot"></div>
+                  <span id="progress-status-text">Initialising…</span>
+                </div>
+                <div class="progress-pct" id="progress-pct">0%</div>
+              </div>
+
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+              </div>
+
+              <div class="progress-chunks" id="progress-chunks">Waiting…</div>
+            </div>
+
+            <!-- View Results button (hidden until complete) -->
+            <button class="btn btn-green btn-lg hidden" id="btn-view-results" style="width:100%;justify-content:center;margin-top:14px;gap:10px">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+              View Results →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Clock
+  function updateClock() {
+    const el = document.getElementById('current-time');
+    if (el) el.textContent = new Date().toLocaleTimeString();
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  // Mode selector
+  function selectMode(mode) {
+    const mpInput = document.getElementById('toggle-mp');
+    const threadCard = document.getElementById('mode-thread');
+    const processCard = document.getElementById('mode-process');
+
+    if (mode === 'thread') {
+      mpInput.value = 'false';
+      threadCard.style.borderColor = 'var(--accent-cyan)';
+      threadCard.style.background = 'rgba(0,229,255,0.05)';
+      processCard.style.borderColor = '';
+      processCard.style.background = '';
+    } else {
+      mpInput.value = 'true';
+      processCard.style.borderColor = 'var(--accent-amber)';
+      processCard.style.background = 'rgba(255,184,0,0.05)';
+      threadCard.style.borderColor = '';
+      threadCard.style.background = '';
+    }
+  }
+
+  // Patch IndexPage to read our custom mp input
+  document.addEventListener('DOMContentLoaded', () => {
+    const origStart = IndexPage;
+    // Override toggle reading — patch getUseMp in page init
+    const startBtn = document.getElementById('btn-start');
+    if (startBtn) {
+      startBtn.addEventListener('click', function(e) {
+        // Temporarily patch the toggle reading
+        const mpInput = document.getElementById('toggle-mp');
+        const toggle = document.getElementById('toggle-mp');
+        if (toggle) toggle.checked = toggle.value === 'true';
+      });
+    }
+  });
+</script>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
