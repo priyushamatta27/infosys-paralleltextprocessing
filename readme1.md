@@ -60,7 +60,7 @@ This system can process **large-scale text files (up to lakhs of lines)** effici
 ## 🏗️ Project Structure
 
 ```
-Lexon-Analytics/
+ISB/
 │
 ├── app.py                  # Flask main application
 ├── database.py             # Database operations (SQLite)
