@@ -90,7 +90,7 @@ Lexon-Analytics/
 ### 1️⃣ Clone Repository
 
 ```bash
-git clone https://github.com/your-username/lexon-analytics.git
+git clone https://github.com/priyushamatta27/infosys-paralleltextprocessing.git
 cd lexon-analytics
 ```
 
